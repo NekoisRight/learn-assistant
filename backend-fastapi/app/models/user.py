@@ -1,14 +1,10 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-
-
-def _utcnow() -> datetime:
-    """返回不带时区的 UTC 时间（兼容 MySQL DATETIME 列，规避 3.12+ utcnow 弃用）"""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+from app.models._time import utcnow
 
 
 class User(Base):
@@ -18,4 +14,4 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     email: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

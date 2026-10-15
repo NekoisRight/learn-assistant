@@ -3,10 +3,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, users
+from app.api.routes import articles, auth, scenes, users
 from app.db.base import Base
 from app.db.session import engine
-from app.models import user  # noqa: F401 确保模型注册
+from app.models import Article, Scene, User  # noqa: F401 确保模型注册
 
 
 @asynccontextmanager
@@ -31,6 +31,8 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(articles.router)
+app.include_router(scenes.router)
 
 @app.get("/health")
 async def health():
