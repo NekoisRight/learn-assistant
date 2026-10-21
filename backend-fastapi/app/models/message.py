@@ -1,0 +1,19 @@
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.base import Base
+from app.models._time import utcnow
+
+
+class Message(Base):
+    __tablename__ = "messages"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id"), index=True, nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False)  # user / assistant / system
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    
+    session = relationship("Session", back_populates="messages")

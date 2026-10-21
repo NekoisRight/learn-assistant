@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class AIRole(BaseModel):
@@ -24,6 +24,18 @@ class SceneCard(BaseModel):
     language_goals: str
     final_output: str
     difficulty: str = "standard"
+
+    @field_validator(
+        "title", "user_role", "goal", "conflict",
+        "language_goals", "final_output",
+        mode="before",
+    )
+    @classmethod
+    def _join_list_text(cls, v):
+        """模型偶发把文本字段返回成数组 -> 拼成字符串，避免整卡校验失败"""
+        if isinstance(v, list):
+            return "；".join(str(item) for item in v)
+        return v
 
 class SceneGenerateRequest(BaseModel):
     article_id: int

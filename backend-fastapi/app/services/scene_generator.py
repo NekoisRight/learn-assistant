@@ -55,14 +55,14 @@ async def generate_scene_card(
     extra_instructions: str | None = None,
 ) -> SceneCard:
     """调用 Qwen（DashScope 兼容模式）生成场景卡，失败一律抛 HTTPException。"""
-    if not settings.DASHSCOPE_API_KEY:
+    if not settings.llm_api_key:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="DASHSCOPE_API_KEY 未配置，请在 .env 中填写",
+            detail="LLM_API_KEY 未配置，请在 .env 中填写",
         )
 
     headers = {
-        "Authorization": f"Bearer {settings.DASHSCOPE_API_KEY}",
+        "Authorization": f"Bearer {settings.llm_api_key}",
         "Content-Type": "application/json",
     }
     payload = {
@@ -99,7 +99,7 @@ async def generate_scene_card(
             if upstream_code in (401, 403):
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="DashScope 鉴权失败（401/403）：DASHSCOPE_API_KEY 无效，或与 LLM_BASE_URL 所属区域不匹配",
+                    detail="LLM 鉴权失败（401/403）：LLM_API_KEY 无效，或与 LLM_BASE_URL 所属区域/平台不匹配",
                 )
             resp.raise_for_status()
     except httpx.HTTPError as exc:

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import articles, auth, scenes, users
+from app.api.routes import articles, auth, scenes, sessions, users
 from app.db.base import Base
 from app.db.session import engine
 from app.models import Article, Scene, User  # noqa: F401 确保模型注册
@@ -33,7 +33,9 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(articles.router)
 app.include_router(scenes.router)
+app.include_router(sessions.router)
 
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
