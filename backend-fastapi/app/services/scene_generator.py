@@ -1,11 +1,10 @@
 import json
 
-import httpx
 from fastapi import HTTPException, status
 from pydantic import ValidationError
 
-from app.core.config import settings
 from app.schemas.scene import SceneCard
+from app.services.llm_client import chat_completion
 
 SYSTEM_PROMPT = """
 你是一位资深的英语口语训练场景设计师。
@@ -54,73 +53,42 @@ async def generate_scene_card(
     difficulty: str = "standard",
     extra_instructions: str | None = None,
 ) -> SceneCard:
-    """调用 Qwen（DashScope 兼容模式）生成场景卡，失败一律抛 HTTPException。"""
-    if not settings.llm_api_key:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="LLM_API_KEY 未配置，请在 .env 中填写",
-        )
-
-    headers = {
-        "Authorization": f"Bearer {settings.llm_api_key}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "model": settings.LLM_MODEL_ID,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": USER_TEMPLATE.format(
-                    title=article_title,
-                    level=article_level,
-                    content=article_content,
-                    difficulty=difficulty,
-                    extra=(
-                        f"额外要求：{extra_instructions}\n"
-                        if extra_instructions
-                        else ""
-                    ),
+    """调用 LLM 生成场景卡，失败一律抛 HTTPException。"""
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": USER_TEMPLATE.format(
+                title=article_title,
+                level=article_level,
+                content=article_content,
+                difficulty=difficulty,
+                extra=(
+                    f"额外要求：{extra_instructions}\n"
+                    if extra_instructions
+                    else ""
                 ),
-            },
-        ],
-        "response_format": {"type": "json_object"},
-        "temperature": 0.7,
-    }
+            ),
+        },
+    ]
+
+    raw = await chat_completion(
+        messages,
+        temperature=0.7,
+        timeout=60.0,
+        json_mode=True,
+    )
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                f"{settings.LLM_BASE_URL}/chat/completions",
-                headers=headers,
-                json=payload,
-            )
-            upstream_code = resp.status_code
-            if upstream_code in (401, 403):
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="LLM 鉴权失败（401/403）：LLM_API_KEY 无效，或与 LLM_BASE_URL 所属区域/平台不匹配",
-                )
-            resp.raise_for_status()
-    except httpx.HTTPError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"调用 Qwen 失败：{exc}",
-        ) from exc
-
-    data = resp.json()
-
-    try:
-        raw = data["choices"][0]["message"]["content"]
         parsed = json.loads(_strip_code_fence(raw))
         return SceneCard(**parsed)
-    except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+    except json.JSONDecodeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Qwen 返回内容无法解析：{exc}",
+            detail=f"LLM 返回内容无法解析：{exc}; raw={raw[:300]}",
         ) from exc
     except ValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Qwen 返回结构不符合场景卡格式：{exc.errors()}",
+            detail=f"LLM 返回结构不符合场景卡格式：{exc.errors()}",
         ) from exc

@@ -1,12 +1,10 @@
-import httpx
-from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.models.message import Message
 from app.models.scene import Scene
 from app.models.session import Session
+from app.services.llm_client import chat_completion
 
 HISTORY_LIMIT = 10
 
@@ -59,39 +57,4 @@ async def generate_ai_reply(
     messages = [{"role": "system", "content": build_system_prompt(scene)}]
     messages.extend({"role": m.role, "content": m.content} for m in recent)
 
-    payload = {
-        "model": settings.LLM_MODEL_ID,
-        "messages": messages,
-        "temperature": 0.7,
-    }
-    headers = {
-        "Authorization": f"Bearer {settings.llm_api_key}",
-        "Content-Type": "application/json",
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                f"{settings.LLM_BASE_URL}/chat/completions",
-                headers=headers,
-                json=payload,
-            )
-            if resp.status_code in (401, 403):
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="LLM 鉴权失败（401/403）：请检查 LLM_API_KEY 与 LLM_BASE_URL",
-                )
-            resp.raise_for_status()
-    except httpx.HTTPError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"调用 LLM 失败：{exc}",
-        ) from exc
-
-    try:
-        return resp.json()["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="LLM 返回结构异常：缺少 choices[0].message.content",
-        ) from exc
+    return await chat_completion(messages, temperature=0.7, timeout=60.0)
