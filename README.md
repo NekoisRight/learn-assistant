@@ -29,7 +29,7 @@ pnpm dev
 
 支持 Anthropic 与 OpenAI 两种兼容协议。`LLM_PROTOCOL` 留空时按 `LLM_BASE_URL` 自动识别（含 `anthropic` -> Anthropic，否则 OpenAI）。
 
-阿里百炼 Anthropic 兼容（当前使用）：
+阿里百炼 Anthropic 兼容：
 
 ```dotenv
 LLM_API_KEY=sk-ws-xxx
@@ -51,7 +51,7 @@ LLM_PROTOCOL=openai
 `LLM_BASE_URL` 留空时会回退到 `GLM_BASE_URL`，再回退到 DashScope 兼容地址。
 旧变量名 `DASHSCOPE_API_KEY` 仍兼容。
 
-## 阶段 5 接口
+## 接口
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
