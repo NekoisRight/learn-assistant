@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "apps.pages",
     "apps.articles",
+    "apps.scenes",
 ]
 
 MIDDLEWARE = [
